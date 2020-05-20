@@ -3,6 +3,7 @@
 namespace BeyondCode\LaravelWebSockets;
 
 use BeyondCode\LaravelWebSockets\Apps\AppProvider;
+use BeyondCode\LaravelWebSockets\Dashboard\DashboardLogger;
 use BeyondCode\LaravelWebSockets\Dashboard\Http\Controllers\AuthenticateDashboard;
 use BeyondCode\LaravelWebSockets\Dashboard\Http\Controllers\DashboardApiController;
 use BeyondCode\LaravelWebSockets\Dashboard\Http\Controllers\SendMessage;
@@ -22,12 +23,12 @@ class WebSocketsServiceProvider extends ServiceProvider
     public function boot()
     {
         $this->publishes([
-            __DIR__.'/../config/websockets.php' => base_path('config/websockets.php'),
+            __DIR__ . '/../config/websockets.php' => base_path('config/websockets.php'),
         ], 'config');
 
-        if (! class_exists('CreateWebSocketsStatisticsEntries')) {
+        if (!class_exists('CreateWebSocketsStatisticsEntries')) {
             $this->publishes([
-                __DIR__.'/../database/migrations/create_websockets_statistics_entries_table.php.stub' => database_path('migrations/'.date('Y_m_d_His', time()).'_create_websockets_statistics_entries_table.php'),
+                __DIR__ . '/../database/migrations/create_websockets_statistics_entries_table.php.stub' => database_path('migrations/' . date('Y_m_d_His', time()) . '_create_websockets_statistics_entries_table.php'),
             ], 'migrations');
         }
 
@@ -35,7 +36,7 @@ class WebSocketsServiceProvider extends ServiceProvider
             ->registerRoutes()
             ->registerDashboardGate();
 
-        $this->loadViewsFrom(__DIR__.'/../resources/views/', 'websockets');
+        $this->loadViewsFrom(__DIR__ . '/../resources/views/', 'websockets');
 
         $this->commands([
             Console\StartWebSocketServer::class,
@@ -43,9 +44,36 @@ class WebSocketsServiceProvider extends ServiceProvider
         ]);
     }
 
+    protected function registerDashboardGate()
+    {
+        Gate::define('viewWebSocketsDashboard', function ($user = null) {
+            return app()->environment('local');
+        });
+
+        return $this;
+    }
+
+    protected function registerRoutes()
+    {
+        Route::prefix(config('websockets.path'))->group(function () {
+            Route::middleware(config('websockets.middleware', [AuthorizeDashboard::class]))->group(function () {
+                Route::get('/', ShowDashboard::class);
+                Route::get('/api/{appId}/statistics', [DashboardApiController::class, 'getStatistics']);
+                Route::post('auth', AuthenticateDashboard::class);
+                Route::post('event', SendMessage::class);
+            });
+
+            Route::middleware(AuthorizeStatistics::class)->group(function () {
+                Route::post('statistics', [WebSocketStatisticsEntriesController::class, 'store']);
+            });
+        });
+
+        return $this;
+    }
+
     public function register()
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/websockets.php', 'websockets');
+        $this->mergeConfigFrom(__DIR__ . '/../config/websockets.php', 'websockets');
 
         $this->app->singleton('websockets.router', function () {
             return new Router();
@@ -59,32 +87,10 @@ class WebSocketsServiceProvider extends ServiceProvider
         $this->app->singleton(AppProvider::class, function () {
             return app(config('websockets.app_provider'));
         });
-    }
 
-    protected function registerRoutes()
-    {
-        Route::prefix(config('websockets.path'))->group(function () {
-            Route::middleware(config('websockets.middleware', [AuthorizeDashboard::class]))->group(function () {
-                Route::get('/', ShowDashboard::class);
-                Route::get('/api/{appId}/statistics', [DashboardApiController::class,  'getStatistics']);
-                Route::post('auth', AuthenticateDashboard::class);
-                Route::post('event', SendMessage::class);
-            });
-
-            Route::middleware(AuthorizeStatistics::class)->group(function () {
-                Route::post('statistics', [WebSocketStatisticsEntriesController::class, 'store']);
-            });
+        $this->app->bind(DashboardLogger::class, function () {
+            return app(config('websockets.dashboard_logger'));
         });
 
-        return $this;
-    }
-
-    protected function registerDashboardGate()
-    {
-        Gate::define('viewWebSocketsDashboard', function ($user = null) {
-            return app()->environment('local');
-        });
-
-        return $this;
     }
 }

@@ -132,4 +132,6 @@ return [
      * `ChannelManager` interface provided by this package.
      */
     'channel_manager' => \BeyondCode\LaravelWebSockets\WebSockets\Channels\ChannelManagers\ArrayChannelManager::class,
+
+    'dashboard_logger' => \BeyondCode\LaravelWebSockets\Dashboard\DashboardLogger::class
 ];
