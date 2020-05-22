@@ -133,5 +133,8 @@ return [
      */
     'channel_manager' => \BeyondCode\LaravelWebSockets\WebSockets\Channels\ChannelManagers\ArrayChannelManager::class,
 
-    'dashboard_logger' => \BeyondCode\LaravelWebSockets\Dashboard\DashboardLogger::class
+    'listeners' => [
+        'onOpenListener' => \BeyondCode\LaravelWebSockets\Listeners\WebsocketOnOpenListener::class
+    ]
+
 ];

@@ -3,12 +3,13 @@
 namespace BeyondCode\LaravelWebSockets;
 
 use BeyondCode\LaravelWebSockets\Apps\AppProvider;
-use BeyondCode\LaravelWebSockets\Dashboard\DashboardLogger;
 use BeyondCode\LaravelWebSockets\Dashboard\Http\Controllers\AuthenticateDashboard;
 use BeyondCode\LaravelWebSockets\Dashboard\Http\Controllers\DashboardApiController;
 use BeyondCode\LaravelWebSockets\Dashboard\Http\Controllers\SendMessage;
 use BeyondCode\LaravelWebSockets\Dashboard\Http\Controllers\ShowDashboard;
 use BeyondCode\LaravelWebSockets\Dashboard\Http\Middleware\Authorize as AuthorizeDashboard;
+use BeyondCode\LaravelWebSockets\Listeners\WebsocketOnOpenListener;
+use BeyondCode\LaravelWebSockets\Providers\EventServiceProvider;
 use BeyondCode\LaravelWebSockets\Server\Router;
 use BeyondCode\LaravelWebSockets\Statistics\Http\Controllers\WebSocketStatisticsEntriesController;
 use BeyondCode\LaravelWebSockets\Statistics\Http\Middleware\Authorize as AuthorizeStatistics;
@@ -88,9 +89,12 @@ class WebSocketsServiceProvider extends ServiceProvider
             return app(config('websockets.app_provider'));
         });
 
-        $this->app->bind(DashboardLogger::class, function () {
-            return app(config('websockets.dashboard_logger'));
+        $this->app->bind(WebsocketOnOpenListener::class, function () {
+            return app(config('websockets.listeners.onOpenListener'));
         });
+
+        $this->app->register(EventServiceProvider::class);
+
 
     }
 }
